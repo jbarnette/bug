@@ -2,6 +2,7 @@ package bug_test
 
 import (
 	"context"
+	"errors"
 	"os"
 	"time"
 
@@ -18,6 +19,23 @@ func ExampleLog() {
 
 	// Output:
 	// {"at":"hello","greeting":true,"subject":"world"}
+}
+
+func ExampleError() {
+	bug.Write = bug.JSONL(os.Stdout)
+	ctx := context.Background()
+
+	bug.Log(ctx, "no-boom",
+		bug.Error(nil))
+
+	err := errors.New("kaboom")
+
+	bug.Log(ctx, "boom",
+		bug.Error(err))
+
+	// Output:
+	// {"at":"no-boom"}
+	// {"at":"boom","error":true,"error.message":"kaboom","error.type":"*errors.errorString"}
 }
 
 func ExampleWith() {

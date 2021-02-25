@@ -37,8 +37,22 @@ func Log(ctx context.Context, at string, taggers ...Tagger) {
 
 // Tag returns a tagger for the provided key and value. Pass it to Log or With.
 func Tag(key string, value any) Tagger {
-	return func(f func(string, any)) {
-		f(key, value)
+	return func(tag func(string, any)) {
+		tag(key, value)
+	}
+}
+
+// Error returns a tagger for the provided error. If the error is non-nil, the tagger
+// generates error=true, error.message, and error.type tags.
+func Error(err error) Tagger {
+	return func(tag func(string, any)) {
+		if err == nil {
+			return
+		}
+
+		tag("error", true)
+		tag("error.message", err.Error())
+		tag("error.type", fmt.Sprintf("%T", err))
 	}
 }
 

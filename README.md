@@ -38,6 +38,19 @@ func main() {
 {"at":"leaving","elapsed":1.00043627,"shared":"value"}
 ```
 
+## Error tags
+
+`bug.Error` tags an event with the error's message and type. It ignores nil values.
+
+```go
+bug.Log(ctx, "accept",
+  bug.Error(err))
+```
+
+```json
+{"at":"accept","error":true,"error.message":"accept tcp 127.0.0.1:32827: use of closed network connection","error.type":"*net.OpError"}
+```
+
 ## Logfmt
 
 You can filter bug's output through [jbarnette/logfmt](https://github.com/jbarnette/logfmt) for a more humane view.
