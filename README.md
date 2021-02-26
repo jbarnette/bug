@@ -1,6 +1,6 @@
 # bug, a logger
 
-bug is a simple & slow structured logger for context-aware Go programs. It writes JSONL to stdout by default. To log an event, call `bug.Log`. Use `bug.With` to add tags to the context. Measure elapsed time during an operation with `bug.Span`.
+bug is a simple & slow structured logger for context-aware Go programs. It writes JSONL to stdout by default. To log an event, call `bug.Log`. Use `bug.With` to add tags to the context. Use `bug.WithSpan` to measure the duration of a task.
 
 ```go
 package main
@@ -24,7 +24,7 @@ func main() {
     bug.Tag("shared", "value"))
 
   // measure elapsed time
-  ctx, cancel := bug.Span(ctx, "leaving")
+  ctx, cancel := bug.WithSpan(ctx, "leaving")
   defer cancel()
 
   time.Sleep(1 * time.Second)

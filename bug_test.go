@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"os"
+	"testing"
 	"time"
 
 	"github.com/jbarnette/bug"
@@ -61,25 +62,34 @@ func ExampleWith() {
 	// {"at":"with-inner","inline":"value","inner":"value","outer":"value"}
 }
 
-func ExampleSpan() {
+func ExampleWithSpan() {
 	bug.Write = bug.JSONL(os.Stdout)
 	ctx := context.Background()
 
 	t := &time.Time{}
 	bug.Now = func() time.Time { return *t }
 
-	ctx, cancel := bug.Span(ctx, "outside",
-		bug.Tag("outer", "value"))
-
+	span, cancel := bug.WithSpan(ctx, "outside")
 	defer cancel()
 
-	bug.Log(ctx, "inside", bug.Tag("inner", "value"))
+	span.Append(bug.Tag("outer", "value"))
+	bug.Log(span, "inside", bug.Tag("inner", "value"))
 
 	*t = t.Add(1 * time.Minute)
 
 	// Output:
 	// {"at":"inside","inner":"value"}
 	// {"at":"outside","elapsed":60,"outer":"value"}
+}
+
+func TestSpanFrom(t *testing.T) {
+	ctx := context.Background()
+	span, cancel := bug.WithSpan(ctx, "testing")
+	defer cancel()
+
+	if from := bug.SpanFrom(span); from != span {
+		t.Errorf("%v != %v", from, span)
+	}
 }
 
 type stringer struct{ string }

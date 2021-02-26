@@ -11,6 +11,12 @@ import (
 	"time"
 )
 
+// A Span is a context that covers the lifetime of an operation.
+type Span struct {
+	context.Context
+	taggers []Tagger
+}
+
 // A Tagger is a generator function for log event tags.
 type Tagger func(tag func(key string, value any))
 
@@ -18,6 +24,8 @@ type Tagger func(tag func(key string, value any))
 type Writer func(ctx context.Context, at string, tagger Tagger)
 
 type any = interface{}
+
+type spanKey struct{}
 
 type taggerKey struct{}
 
@@ -61,24 +69,32 @@ func With(parent context.Context, taggers ...Tagger) context.Context {
 	return context.WithValue(parent, taggerKey{}, combine(parent, taggers))
 }
 
-// Span returns a copy of parent with a CancelFunc that calls Log. The CancelFunc adds an
-// "elapsed" tag, calculated by subtracting Now from the time when Span was called.
-func Span(parent context.Context, at string, taggers ...Tagger) (context.Context, context.CancelFunc) {
+// WithSpan returns a copy of parent with a CancelFunc that calls Log. The CancelFunc adds
+// an "elapsed" tag, calculated by subtracting Now from the time when Span was called.
+func WithSpan(parent context.Context, at string) (*Span, context.CancelFunc) {
 	start := Now()
 
 	ctx, cancel := context.WithCancel(parent)
+	span := &Span{Context: ctx}
 
 	log := func() {
 		cancel()
 
 		elapsed := Now().Sub(start)
-		taggers = append(taggers,
-			Tag("elapsed", elapsed.Seconds()))
-
-		Log(parent, at, taggers...)
+		span.Append(Tag("elapsed", elapsed.Seconds()))
+		Log(parent, at, span.taggers...)
 	}
 
-	return ctx, log
+	return span, log
+}
+
+// SpanFrom returns a pointer to the current span, if there is one.
+func SpanFrom(ctx context.Context) *Span {
+	if span, ok := ctx.Value(spanKey{}).(*Span); ok {
+		return span
+	}
+
+	return nil
 }
 
 // JSONL returns a log writer that writes JSON lines to w.
@@ -102,6 +118,20 @@ func JSONL(w io.Writer) Writer {
 			fmt.Fprintf(os.Stderr, "bug: jsonl: %v\n", err)
 		}
 	}
+}
+
+// Append appends the provided taggers to the span's taggers.
+func (s *Span) Append(taggers ...Tagger) {
+	s.taggers = append(s.taggers, taggers...)
+}
+
+// Value implements context.Context with a special case to support SpanFrom.
+func (s *Span) Value(key interface{}) interface{} {
+	if key == (spanKey{}) {
+		return s
+	}
+
+	return s.Context.Value(key)
 }
 
 // combine returns a Tagger that combines ctx's tagger with the provided taggers.
